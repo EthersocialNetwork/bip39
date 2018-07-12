@@ -1257,6 +1257,13 @@ it('Allows selection of Callisto', function(done) {
     };
     testNetwork(done, params);
 });
+it('Allows selection of Ethersocial Network', function(done) {
+    var params = {
+        selectText: "ESN - Ethersocial Network",
+        firstAddress: "0x6EE99Be2A0C7F887a71e21C8608ACF0aa0D2b767",
+    };
+    testNetwork(done, params);
+});
 
 
 // BIP39 seed is set from phrase
