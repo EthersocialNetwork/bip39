@@ -918,6 +918,17 @@
                     || (networks[DOM.network.val()].name == "POA - Poa")
                     || (networks[DOM.network.val()].name == "EXP - Expanse")
                     || (networks[DOM.network.val()].name == "CLO - Callisto")
+                    || (networks[DOM.network.val()].name == "CID0")
+                    || (networks[DOM.network.val()].name == "CID1")
+                    || (networks[DOM.network.val()].name == "CID126")
+                    || (networks[DOM.network.val()].name == "CID127")
+                    || (networks[DOM.network.val()].name == "CID255")
+                    || (networks[DOM.network.val()].name == "CID256")
+                    || (networks[DOM.network.val()].name == "CID65535")
+                    || (networks[DOM.network.val()].name == "CID65536")
+                    || (networks[DOM.network.val()].name == "CID16777215")
+                    || (networks[DOM.network.val()].name == "CID16777216")
+                    || (networks[DOM.network.val()].name == "CID2147483630")
                     || (networks[DOM.network.val()].name == "ESN - Ethersocial Network")
                 ) {
                     var privKeyBuffer = keyPair.d.toBuffer(32);
@@ -1033,6 +1044,92 @@
         DOM.bip44accountXpub.val("");
     }
 
+    function trezorSignTx(path, address) {
+        var address_n = path; //"m/44'/" + chainId + "'/0'/0/0";
+
+        var tmp = path.split('/');
+        var chainId = parseInt(tmp[2].replace("'", ''));
+        console.log('chainId = ' + chainId + '/ address = ' + address);
+
+        // var address_n = [44 | 0x80000000,
+        //                  60 | 0x80000000,
+        //                  0  | 0x80000000 ,
+        //                  0 ]; // same, in raw form
+
+        var nonce = '04'; // note - it is hex, not number!!!
+        var gas_price = '0861c46800';
+        var gas_limit = '5208';
+        var to = address.replace("0x", "");
+        var value = "01"; // in hexadecimal, in wei - this is about 18 ETC
+        var data = null  // for no data
+        var chain_id = chainId; // 1 for ETH, 61 for ETC
+
+        TrezorConnect.ethereumSignTx(
+           address_n,
+           nonce,
+           gas_price,
+           gas_limit,
+           to,
+           value,
+           data,
+           chain_id,
+           function (response) {
+            if (response.success) {
+                console.log('Signature V (recovery parameter):', response.v); // number
+                console.log('Signature R component:', response.r); // bytes
+                console.log('Signature S component:', response.s); // bytes
+            } else {
+                console.error('Error:', response.error); // error message
+            }
+            delete response.success;
+            response.value = "0x" + value;
+            response.v = "0x" + response.v.toString(16);
+            response.r = "0x" + response.r;
+            response.s = "0x" + response.s;
+            response.nonce = "0x" + nonce;
+            response.data = "0x";
+            response.chainId = chain_id;
+            response.gasLimit = "0x" + gas_limit;
+            response.gasPrice = "0x" + gas_price;
+            response.to = "0x" + to;
+
+            document.getElementById("response").innerHTML =
+            "const ethTx = require('ethereumjs-tx');\n" +
+            "const txParams = " + JSON.stringify(response, undefined, 2) + ";\n" +
+            "// Transaction is created\n" +
+            "const tx = new ethTx(txParams);\n" +
+            "const serializedTx = tx.serialize();\n" +
+            "const rawTx = '0x' + serializedTx.toString('hex');\n" +
+            "var ret = tx.verifySignature();\n" +
+            "console.log('verifySignature() = ', ret);\n" +
+            "console.log('SenderAddress = ' + tx.getSenderAddress().toString('hex'));\n" +
+            "\n" +
+            "if (txParams.to.toLowerCase().slice(2) == tx.getSenderAddress().toString('hex')) {\n" +
+            "  console.log('SUCCESS!');\n" +
+            "} else {\n" +
+            "  console.log('FAIL');\n" +
+            "}\n" +
+            "\n" +
+            "//console.log(rawTx)\n" +
+            "console.log('eth.sendRawTransaction(\"' + rawTx + '\")');\n" +
+            "";
+            //var ethTx = require('ethereumjs-tx');
+            var txParams = response;
+            var tx = new ethTx(txParams);
+            var serializedTx = tx.serialize();
+            var rawTx = '0x' + serializedTx.toString('hex');
+            var ret = tx.verifySignature();
+            console.log('verifySignature() = ', ret);
+            console.log('SenderAddress = ' + tx.getSenderAddress().toString('hex'));
+            if (txParams.to.toLowerCase().slice(2) == tx.getSenderAddress().toString('hex')) {
+              console.log('SUCCESS!');
+            } else {
+              console.log('FAIL');
+            }
+            console.log('eth.sendRawTransaction("' + rawTx + '")');
+        }, '1.4.2');
+    }
+
     function addAddressToList(indexText, address, pubkey, privkey) {
         var row = $(addressRowTemplate.html());
         // Elements
@@ -1058,6 +1155,13 @@
         if (!showPrivKey) {
             privkeyCell.addClass("invisible");
         }
+
+        var button = $("<input>").attr({type:'button', value: 'Sign'});
+        button.on("click", function(e) {
+            trezorSignTx(indexText, address);
+        });
+        addressCell.append(button);
+
         DOM.addresses.append(row);
         var rowShowQrEls = row.find("[data-show-qr]");
         setQrEvents(rowShowQrEls);
@@ -1906,6 +2010,94 @@
             onSelect: function() {
                 network = bitcoinjs.bitcoin.networks.europecoin;
                 setHdCoin(151);
+            },
+        },
+        {
+            name: "CID0",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(0);
+            },
+        },
+        {
+            name: "CID1",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(1);
+            },
+        },
+        {
+            name: "CID126",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(126);
+            },
+        },
+        {
+            name: "CID127",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(127);
+            },
+        },
+        {
+            name: "CID255",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(255);
+            },
+        },
+        {
+            name: "CID256",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(256);
+            },
+        },
+        {
+            name: "CID65535",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(65535);
+            },
+        },
+        {
+            name: "CID65536",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(65536);
+            },
+        },
+        {
+            name: "CID16777215",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(16777215);
+            },
+        },
+        {
+            name: "CID16777216",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(16777216);
+            },
+        },
+        {
+            name: "CID2147483630",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(2147483630);
             },
         },
         {
