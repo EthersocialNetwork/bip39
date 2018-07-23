@@ -65,6 +65,7 @@
     DOM.bip44path = $("#bip44-path");
     DOM.bip44purpose = $("#bip44 .purpose");
     DOM.bip44coin = $("#bip44 .coin");
+    DOM.bip44chainid = $("#bip44 .chain_id");
     DOM.bip44account = $("#bip44 .account");
     DOM.bip44accountXprv = $("#bip44 .account-xprv");
     DOM.bip44accountXpub = $("#bip44 .account-xpub");
@@ -929,6 +930,7 @@
                     || (networks[DOM.network.val()].name == "CID16777215")
                     || (networks[DOM.network.val()].name == "CID16777216")
                     || (networks[DOM.network.val()].name == "CID2147483630")
+                    || (networks[DOM.network.val()].name == "CID2147483631")
                     || (networks[DOM.network.val()].name == "ESN - Ethersocial Network")
                 ) {
                     var privKeyBuffer = keyPair.d.toBuffer(32);
@@ -1049,6 +1051,12 @@
 
         var tmp = path.split('/');
         var chainId = parseInt(tmp[2].replace("'", ''));
+        if (DOM.bip44chainid.val()) {
+          var tmp = parseInt(DOM.bip44chainid.val());
+          if (tmp > 0) {
+            chainId = tmp;
+          }
+        }
         console.log('chainId = ' + chainId + '/ address = ' + address);
 
         // var address_n = [44 | 0x80000000,
@@ -1074,8 +1082,17 @@
            data,
            chain_id,
            function (response) {
+            console.log(response);
             if (response.success) {
                 console.log('Signature V (recovery parameter):', response.v); // number
+                console.log('chainId is ' + chainId);
+                // recalc v
+                let v = chain_id * 2 + 35;
+                if ((response.v - (v & 0xffffffff)) > 0) {
+                    v += 1;
+                }
+                console.log('Signature V (recalculated):', v);
+                response.v = v;
                 console.log('Signature R component:', response.r); // bytes
                 console.log('Signature S component:', response.s); // bytes
             } else {
@@ -1606,10 +1623,11 @@
         return DOM.bip141tab.hasClass("active");
     }
 
-    function setHdCoin(coinValue) {
+    function setHdCoin(coinValue, chainid) {
         DOM.bip44coin.val(coinValue);
         DOM.bip49coin.val(coinValue);
         DOM.bip84coin.val(coinValue);
+        DOM.bip44chainid.val(chainid || 0);
     }
 
     function showSegwitAvailable() {
@@ -2101,6 +2119,14 @@
             },
         },
         {
+            name: "CID2147483631",
+            segwitAvailable: false,
+            onSelect: function() {
+                network = bitcoinjs.bitcoin.networks.bitcoin;
+                setHdCoin(2147483631);
+            },
+        },
+        {
             name: "ESN - Ethersocial Network",
             segwitAvailable: false,
             onSelect: function() {
@@ -2322,7 +2348,7 @@
             segwitAvailable: false,
             onSelect: function() {
                 network = bitcoinjs.bitcoin.networks.bitcoin;
-                setHdCoin(184);
+                setHdCoin(184, 7762959);
             },
         },
         {
@@ -2428,7 +2454,7 @@
             segwitAvailable: false,
             onSelect: function() {
                 network = bitcoinjs.bitcoin.networks.bitcoin;
-                setHdCoin(164);
+                setHdCoin(164, 3125659152);
             },
         },
         {
